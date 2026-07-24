@@ -42,7 +42,7 @@ are documented or verified.
 
 ### Remote lab
 
-- The lab has up to eight RTX 3090 GPUs, but availability must be checked for
+- The lab (basic1 or basic2) has up to eight RTX 3090 GPUs, but availability must be checked for
   every experiment; never assume all eight are free or usable.
 - Before scheduling a GPU job, run and record an availability check on the lab
   host, for example:
