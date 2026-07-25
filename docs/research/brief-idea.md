@@ -1,5 +1,19 @@
 # Query-Conditioned Quantization Sensitivity and Precision-Compatible Batching
 
+# Query-Conditioned Quantization Research Brief
+
+## Status
+
+Exploratory research brief. Claims, scope, and related-work conclusions
+remain provisional until resolved through the Wayfinder map.
+
+## Central question
+
+Can a compositional representation of an incoming query predict its
+blockwise quantization-sensitivity profile, enabling a serving system to
+select a hardware-efficient mixed-precision schedule and batch requests
+with compatible schedules while satisfying per-request quality constraints?
+
 ## The System Has Two Separate Levels
 
 | Level | Examples |
