@@ -85,3 +85,23 @@ That claim is intentionally an intersection claim. It should be presented as “
 The two papers named QAQ are distinct: **Query-adaptive Mixed-precision Quantization** is the direct weight/block-routing precedent; **Quality Adaptive Quantization for LLM KV Cache** is a KV-cache method. The matrix keeps them separate to avoid conflating weight precision selection with cache precision adaptation. ([Query-adaptive QAQ](https://openreview.net/pdf?id=dpHfDasG44), [Quality-adaptive QAQ](https://arxiv.org/abs/2403.04643))
 
 The arXiv record for the ticket’s IMPQ name currently uses the title **CoopQ: Cooperative Game Inspired Layerwise Mixed Precision Quantization for LLMs**. The source record describes the same Shapley/SPQE line and is cited under both names above. ([arXiv:2509.15455](https://arxiv.org/abs/2509.15455))
+
+PMPD is an important boundary correction: its learned scheduler adapts a precision schedule to each prompt before decoding, using prefill-derived features. That makes “pre-inference prompt-conditioned schedule selection” too broad as a QAB claim. PMPD’s schedule axis is phase and generation depth rather than a predicted contiguous transformer block-group quality profile, so it does not remove the narrower intersection below. ([PMPD](https://arxiv.org/abs/2410.13461))
+
+## Audit addendum (approved 2026-07-25)
+
+The primary-source audit adds the following corrections to the matrix above:
+
+| Source | Boundary correction |
+|---|---|
+| **PMPD** | Its learned scheduler adapts a precision schedule to each prompt before decoding. Therefore “pre-inference prompt-conditioned schedule selection” is not sufficient novelty. Its schedule axis is phase and generation depth, not a contiguous transformer block-group quality profile. ([paper](https://arxiv.org/abs/2410.13461)) |
+| **AnyBCQ** | Its “block-wise” procedure refers to weight-tensor reconstruction granularity; it should not be conflated with contiguous transformer block groups. Its dynamic per-request selection is not semantic query conditioning. ([paper](https://arxiv.org/abs/2510.10467)) |
+| **RAMP** | Static multidimensional layer representations and learned policy transfer further weaken broad claims about multidimensional sensitivity prediction, but RAMP has no incoming-query conditioning or compatible batching. ([paper](https://arxiv.org/abs/2603.17891)) |
+| **MXSens** | Recent static column/layer sensitivity-aware mixed precision is adjacent evidence against broad sensitivity-allocation novelty, but it uses a different quantization setting and is not query-conditioned. ([paper](https://arxiv.org/abs/2607.17733)) |
+| **MoQAE** | A learned router selects mixed-precision KV-cache configurations for input chunks/tokens, with routing shared across LLM blocks. This remains outside the weights-only boundary. ([paper](https://aclanthology.org/2025.acl-long.531/)) |
+
+Accordingly, the following claims are explicitly prior art or too broad: first query-conditioned precision selection; first pre-inference prompt-conditioned schedule selection; first query-conditioned layer sensitivity; first per-prompt adaptive quantization; first block-wise mixed precision; and first multidimensional sensitivity-aware precision policy.
+
+The narrowest defensible QAB boundary remains the evaluated intersection of: (1) a calibrated pre-inference predictor of query-specific quality degradation across contiguous transformer block groups and candidate weight-only schedules; (2) quality-safe schedule selection from a finite hardware-executable codebook; and (3) precision-compatible batching based on overlap of per-request feasible schedules. This is a qualified intersection claim—“not established by the primary sources reviewed here”—not an absolute first claim.
+
+The audit did not find a reviewed primary source that forms batches by overlapping query-specific quality-safe weight schedules. That absence is provisional and must remain qualified until a broader concurrent-literature search is completed.
