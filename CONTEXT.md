@@ -6,8 +6,50 @@ precision for decoder-only language-model inference.
 ## Language
 
 **Request**:
-An incoming single-turn inference item whose query may affect the selected
-precision schedule.
+An immutable single-turn evaluation unit containing a query, any fixed supplied
+context, a required output contract, an atomic or composite component
+structure, and source/template/split/leakage identities.
+A request is distinct from a request–precision-schedule pair. Live retrieval,
+conversation history, and post-routing adaptation are not part of the initial
+request identity.
+
+**Ground truth**:
+
+A pre-existing target or behavioral reference independent of model output and
+precision schedule. It may be an exact answer, equivalence target, executable
+test contract, answer label, or evidence-support label.
+
+**Evaluator**:
+
+A versioned procedure that consumes candidate output and ground truth, performs
+extraction/normalization/scoring, and emits raw metric outputs. Evaluator output
+is not ground truth.
+
+**Metric**:
+
+A named raw output of a pinned evaluator with declared native value, range,
+direction, and status semantics. Component metrics remain distinct from the
+request-level Boolean quality judgment; no implicit cross-component averaging
+is permitted.
+
+**Unscorable output**:
+
+A candidate output exists, but the frozen evaluator cannot produce a valid
+judgment under its protocol. It is not quality-safe and is reported separately
+from scored failure, evaluator failure, and execution failure; it remains in
+attempted counts and is not silently dropped.
+
+**Registry row**:
+
+One authoritative request–component record. Composite requests reuse request
+identity fields across rows while each component retains its own scoring fields.
+
+**Task family**:
+
+A named, evaluator-homogeneous population of request components sharing
+ground-truth semantics, output contract, primary evaluator, raw metric
+definitions, and scoring protocol. It is narrower than a component family and
+is not a topic label.
 
 **Block group**:
 A contiguous group of transformer layers treated as one adaptation unit for
@@ -29,9 +71,68 @@ model-derived representation changes.
 _Avoid_: workload-conditioned, when the decision depends only on length,
 batching, hardware, or other system properties.
 
+**Initial task suite**:
+
+The minimum decisive set of coherent request components and composites used to
+test whether query-conditioned quantization sensitivity varies and whether
+request representations predict quality-safe schedules beyond trivial and
+semantic baselines. It prioritizes deterministic judgments and held-out
+compositional generalization over benchmark breadth.
+
+**Suite priority**:
+
+Deterministic absolute-quality measurement is primary; held-out compositional
+generalization on coherent, jointly necessary composites is required; broader
+capability coverage is secondary.
+
+**Component family**:
+
+An independently scorable capability family represented in the initial suite:
+numeric/mathematical reasoning, executable code generation, or fixed-context
+evidence-grounded question answering.
+
 **Request component**:
-A declared, mandatory subtask or quality-relevant requirement within a
-composite request that can receive its own quality judgment.
+An independently scorable mandatory or auxiliary requirement within a request.
+A component is not merely a topic, domain, or task-family label.
+
+**Mandatory component**:
+An independently scorable requirement included in the primary request-level
+quality gate. Every mandatory component must pass; auxiliary results cannot
+compensate for mandatory failure.
+
+**Auxiliary component**:
+An independently scorable requirement recorded for diagnosis or secondary
+analysis but excluded from the primary request-level quality gate. Its failure
+does not compensate for or invalidate mandatory-component judgments.
+
+**Composite request**:
+
+A single-turn request containing two or more components that are jointly
+necessary within a shared scenario, context, dependency structure, or output
+contract. Each component has a separate quality judgment, and the complete
+request retains one traceable request-level identity.
+
+Unrelated benchmark prompts concatenated together are not composite requests.
+
+**Composition signature**:
+
+A versioned canonical representation of component types, roles, mandatory or
+auxiliary flags, directed dependencies, and required output-field relationships
+used for deterministic composition grouping and split assignment.
+
+**Split allocation**:
+
+Train and validation use source-disjoint atomic and seen-composition instances;
+IID final uses the same signatures; held-out final uses unseen signatures.
+Assign source instances before generating derivatives and keep all derivatives in
+their source split.
+
+**Leakage group**:
+
+The transitive set of source and derived records that could reveal the same
+solution, context, tests, or prompt structure. A leakage group is assigned to
+one split; cross-split parent unions are invalid, and near duplicates are
+merged before split assignment.
 
 **Quality contract**:
 The preregistered rule that determines whether a request–precision-schedule
