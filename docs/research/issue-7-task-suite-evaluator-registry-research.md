@@ -498,3 +498,61 @@ unresolved until the user confirms them.
 - SQuAD repository/evaluator: https://github.com/rajpurkar/SQuAD/tree/09eac9971f46889fa057ff2c870bf71092ba9d55
 - HotpotQA repository: https://github.com/hotpotqa/hotpot
 - MuSiQue repository and evaluator: https://github.com/StonyBrookNLP/musique/tree/24cc5b297acc2abfc5fb3d0becb6ef7b73d03717
+
+## Source-verification addendum
+
+The pinned evaluator sources were checked again after the registry decision.
+This addendum supersedes any earlier shorthand that conflicts with the source.
+
+- MATH extraction is in the repository extraction helper, separate from
+  math_equivalence.py. The pinned equivalence implementation normalizes strings
+  and applies exact normalized-string equality; it is not symbolic equivalence.
+  Missing extraction and evaluator exceptions must be represented by the
+  adapter's normalized status rather than silently treated as a valid match.
+  [equivalence source](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/math_equivalence.py#L69-L152),
+  [extraction source](https://github.com/hendrycks/math/blob/985bdc1696e88e8643f081a0ff4719da39f2ae2a/modeling/dataset/util.py#L5-L41).
+- EvalPlus emits native pass, fail, and timeout outcomes; candidate exceptions
+  are failures and process timeouts retain timeout status. The pinned evaluator
+  uses a max(1.0 seconds, 4 times reference runtime) per-test floor, and full
+  per-test details require test_details=true. Its reliability guard is not a
+  security sandbox, so external isolation and network policy must be pinned as
+  separate run controls.
+  [evaluation source](https://github.com/evalplus/evalplus/blob/e5d0ed0bab96280b60b637ec7f15b5e4841b0cb2/evalplus/evaluate.py#L79-L124),
+  [timeout source](https://github.com/evalplus/evalplus/blob/e5d0ed0bab96280b60b637ec7f15b5e4841b0cb2/evalplus/eval/__init__.py#L87-L108),
+  [sandbox warning](https://github.com/evalplus/evalplus/blob/e5d0ed0bab96280b60b637ec7f15b5e4841b0cb2/evalplus/eval/utils.py#L102-L112).
+- MuSiQue requires aligned prediction/gold rows and raises on missing or
+  malformed fields. The adapter therefore classifies candidate schema failure
+  before invoking the official evaluator, while input alignment or evaluator
+  errors remain evaluator_error. Answer/support denominators and question-group
+  sufficiency denominators are retained separately.
+  [official evaluator](https://github.com/StonyBrookNLP/musique/blob/24cc5b297acc2abfc5fb3d0becb6ef7b73d03717/evaluate_v1.0.py#L18-L97),
+  [group metrics](https://github.com/StonyBrookNLP/musique/blob/24cc5b297acc2abfc5fb3d0becb6ef7b73d03717/metrics/group.py#L23-L39).
+
+## Feasibility source-count addendum
+
+The bounded primary-source audit corrected the MuSiQue population description.
+MuSiQue-Full v1.0 contains 49,628 rows: 39,876 train, 4,834 dev, and 4,918
+test. The earlier approximately-25,000 figure described answerable rows and
+must not be used as the Full-suite denominator.
+
+For the accepted 804-request profile cap, the audit's smaller 300-request
+illustration remains a useful lower-bound comparison but does not replace the
+accepted cap. Its transparent example uses 75 MATH atomic rows, 60 HumanEval+
+atomic rows, 100 MuSiQue rows representing 50 paired Full question groups, and
+65 numeric-to-code composites. At S=8 it produces 2,400 model outputs and 3,720
+component records before any additional baseline conditions.
+
+Conservative evaluator envelopes for that illustration are approximately 1.6
+single-worker CPU hours for MATH, 34.4 hours for HumanEval+ if every test phase
+reaches its timeout bound, and 2.2 hours for MuSiQue under the registered
+adapter timeout. These are bounds, not measurements; model-generation time,
+hardware, and the eventual schedule count remain unmeasured.
+
+The normalized-artifact storage estimate is approximately 40 MiB, or 55 MiB
+with detailed code-test traces, for the 300-request illustration at S=8 under
+the stated assumptions. The specification retains a deliberately conservative
+1–3 GiB envelope for the larger accepted cap and S=8–16 range.
+
+Primary sources: [MuSiQue paper](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00475/110996/MuSiQue-Multihop-Questions-via-Single-hop-Question),
+[pinned MuSiQue repository](https://github.com/StonyBrookNLP/musique/tree/24cc5b297acc2abfc5fb3d0becb6ef7b73d03717),
+[pinned HumanEval+ release](https://github.com/evalplus/humanevalplus_release/tree/200defce9e3429d28ca215b6dd061c0f7f31c18b).

@@ -166,3 +166,47 @@ unscorable policy, versioning, and feasibility one decision at a time.
   fixed-order evaluation uses a 5-second record timeout; malformed fields are
   scored failure, evaluator/alignment errors are separate, and unscorable
   outputs remain in attempted and denominator counts.
+
+- Accepted evaluator-disagreement and denominator policy: retain every raw
+  evaluator result, extraction trace, status, and pinned version; the primary
+  evaluator is authoritative and auxiliary metrics are diagnostic only; no
+  averaging or primary-study fallback; manual adjudication is audit-only; model
+  output-dependent filtering is forbidden; normalized statuses are scored,
+  unscorable_output, evaluator_error, execution_error, and nondeterministic;
+  native evaluator statuses and failure kinds remain visible; raw metric
+  denominators use scored evaluations, while all non-quality statuses remain
+  visible in attempted and exclusion-rate reporting and never count as safe.
+  This does not set Issue #4 quality thresholds or risk parameters.
+- Evidence correction recorded: MATH extraction/equivalence, EvalPlus native
+  timeout/status behavior, and MuSiQue schema/alignment errors are pinned to
+  the cited source behavior in the research note and specification.
+
+- Accepted versioning and freeze policy: pin every judgment-affecting dataset,
+  evaluator, dependency, runtime, adapter/parser, template, composite
+  procedure, test, split-manifest, and manual-adjudication identity. Freeze the
+  registry before validation/model-output runs and freeze the final-test
+  manifest before threshold, schedule-codebook, predictor, or router tuning.
+  After final-test freeze, judgment-affecting changes require a dated scientific
+  change record, affected-result invalidation, and new immutable runs; before
+  the freeze, affected validation/calibration work must be rerun. Documentation-
+  only changes do not reopen Issue #7. This does not set Issue #4 thresholds or
+  risk parameters.
+- The exact versioned field list is recorded in docs/research-spec.md.
+
+- Accepted feasibility budget: first profile subset of 128 MATH atomic, all 164
+  HumanEval+ source tasks, 256 native MuSiQue 2/3-hop, 128 held-out MuSiQue
+  4-hop, and 128 numeric->code composites, for 804 request identities. With
+  Issue #5 schedule count S in the current 8–16 scope, estimate 6,432–12,864
+  request-schedule executions; use 100–250 KiB per record as an explicit
+  1–3 GiB planning envelope. Full-source repeated evaluation is out of scope
+  for the first profile experiment; exact runtime and archive checksums require
+  approved preflight. HumanEval+'s 164-task source cap is a recorded power
+  limitation, not evidence of final safety sufficiency. This does not set Issue
+  #4 thresholds or risk parameters.
+- J is the final scientific-design decision; completeness audit and explicit
+  shared-understanding confirmation are required before Issue #7 resolution.
+
+- Feasibility-source correction recorded: MuSiQue-Full is 49,628 total rows,
+  not approximately 25,000; the smaller number referred to answerable rows.
+  The accepted 804-request cap and its conservative storage envelope remain
+  unchanged.

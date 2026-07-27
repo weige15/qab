@@ -248,8 +248,8 @@ execute. Hardware feasibility is separate from quality safety.
 
 **Final-test freeze**:
 The point before final-test evaluation after which the quality contract,
-evaluator registry, strata, thresholds, and decision rules cannot be changed
-without invalidating the affected results.
+evaluator registry, all judgment-affecting registry artifacts, strata,
+thresholds, and decision rules cannot be changed without invalidating results.
 
 **Contract change**:
 A post-freeze change to any quality-contract field, evaluator, decoding
@@ -282,3 +282,83 @@ outputs, and scoring protocol.
 The rule that combines mandatory request-component judgments into the
 whole-request quality judgment. This study uses logical conjunction for
 quality safety, with no cross-component compensation.
+
+**Native evaluator status**:
+
+The status emitted by a pinned evaluator before the repository's normalized
+status mapping. Native status and failure kind remain visible in the registry.
+
+**Normalized evaluation status**:
+
+The cross-evaluator status used for reporting: scored, unscorable_output,
+evaluator_error, execution_error, or nondeterministic. It does not erase the
+evaluator-native status.
+
+**Metric denominator**:
+
+The count of scored evaluations used for one named raw metric. It is distinct
+from the attempted-evaluation reporting population and from any later quality-
+risk denominator.
+
+**Attempted-evaluation denominator**:
+
+The count of frozen request–schedule–component evaluations submitted for
+execution or scoring, including non-quality statuses. Exclusions and
+unscorable results remain visible in this denominator's reporting.
+
+**Evaluator adapter**:
+
+The pinned boundary that maps candidate-output extraction, evaluator-native
+statuses, and evaluator errors into the normalized registry status without
+averaging, fallback, or output-dependent filtering.
+
+**Versioned registry**:
+
+The immutable set of dataset, evaluator, dependency, adapter, template,
+composition, test, split, and adjudication identities required to reproduce
+the same quality judgments.
+
+**Registry freeze**:
+
+The point before validation or model-output runs after which the versioned
+registry is the source for all derived requests and evaluator runs.
+
+
+**Scientific change record**:
+
+A dated record of a post-freeze change, its reason, affected artifacts, and
+required reruns. It preserves the old result rather than overwriting it.
+
+**Documentation-only change**:
+
+A change that cannot affect execution, extraction, scoring, split membership,
+or interpretation of recorded results and therefore does not reopen the task
+suite decision.
+
+**Profile feasibility budget**:
+
+The predeclared cap and source-grouped population for the first profile
+experiment. It estimates repeated request–schedule measurement without claiming
+final safety power.
+
+**Profile experiment**:
+
+The first schedule-measurement study using the feasibility budget. It is
+distinct from full-source evaluation and from the later Issue #4 safety claim.
+
+**Source population cap**:
+
+The fixed number of source instances eligible for the first profile experiment.
+Derived variants and composites remain within the source instance's split and
+leakage group.
+
+**Feasibility envelope**:
+
+An assumption-based estimate of request counts, repeated schedule executions,
+evaluator work, and artifact storage. It is not a measured runtime or hardware
+claim.
+
+**Statistical-power limitation**:
+
+A documented source or split constraint that limits the strength of a safety or
+generalization claim without invalidating the profile measurement itself.

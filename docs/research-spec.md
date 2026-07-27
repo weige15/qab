@@ -3,10 +3,10 @@
 ## Status
 
 The adaptation unit and routing decision point are resolved. The quality
-contract structure is resolved through the current preregistration decisions,
-but its exact task/evaluator metric registry and numeric thresholds remain
-blocked by issue #7. The model, dataset, quantization backend, and schedule
-count also remain open.
+contract structure and Issue #7 task/evaluator registry are resolved through
+the current preregistration decisions. Issue #4 numeric thresholds remain
+open. The model, quantization backend, block-group boundaries, schedule
+codebook, and exact router inputs remain open under their separate decisions.
 
 ## Research objective
 
@@ -182,16 +182,17 @@ and component type.
 - evaluator_source: `hendrycks/math`, pinned to commit
   `985bdc1696e88e8643f081a0ff4719da39f2ae2a`
 - input: the complete candidate response and the target answer
-- output_extraction: the official final-answer/boxed-answer extraction at the
-  pinned evaluator revision
-- output_normalization: the official math-equivalence normalization at the
-  pinned evaluator revision
+- output_extraction: the pinned repository extraction helper in
+  modeling/dataset/util.py at the evaluator commit
+- output_normalization: pinned math_equivalence normalization; comparison is
+  exact normalized-string equality, not symbolic equivalence
 - target_representation: the normalized target answer
 - raw_metric: `equivalent` in `{0,1}`; higher is better
 - deterministic_settings: CPU evaluation with no random seed
 - timeout: 5 seconds per candidate response
-- malformed_output: deterministic non-equivalence (`equivalent=0`) when the
-  scorer returns a valid result
+- malformed_output: adapter records missing or invalid extraction as
+  unscorable_output; it does not treat missing values as a valid equivalence
+  result
 - evaluator_error: a separate evaluator-error status, not a task failure
 - unscorable_policy: a separate unscorable status when no valid judgment can
   be produced; it remains in attempted and denominator counts
@@ -234,13 +235,17 @@ and component type.
   identifiers; no averaging across these metrics
 - metric_direction: higher pass is better
 
-- deterministic_settings: pinned Python/dependencies, isolated disposable
-  sandbox, network disabled, and one evaluator worker
-- timeout: EvalPlus official per-test rule `max(0.2 seconds, 4 × reference
-  runtime)`, with the corresponding flags pinned
+- deterministic_settings: pinned Python/dependencies, one evaluator worker,
+  and explicit test_details=true; any disposable sandbox or network isolation
+  is a separately pinned run control, not a guarantee of EvalPlus itself
+- native_status: pass, fail, or timeout; candidate exceptions are fail and
+  process timeouts are timeout; plus_pass requires base and plus pass
+- timeout: EvalPlus official per-test rule max(1.0 seconds, 4 × reference
+  runtime), with task-level process timeout and corresponding flags pinned
 - malformed_output: deterministic scored failure with a reason and no execution
-- evaluator_error: separate status; candidate exceptions and timeouts are
-  scored failures
+- evaluator_error: separate status for evaluator or infrastructure failures;
+  candidate exceptions are scored failures and candidate process timeouts retain
+  native timeout with normalized scored status
 - unscorable_policy: separate status only when the evaluator cannot validly
   judge; it remains in attempted and denominator counts
 
@@ -271,10 +276,12 @@ and component type.
   in the final manifest
 - input: the question, fixed supplied context, gold answer/support labels, and
   the candidate prediction; retrieval is disabled
-- output_extraction: official MuSiQue prediction fields for answer and
-  paragraph support; the internal registry stores supporting paragraph IDs
-- output_normalization: official `evaluate_v1.0.py` normalization and scoring
-  behavior at the pinned evaluator commit
+- output_extraction: adapter requires the official prediction fields for answer
+  and paragraph support; the registry stores supporting paragraph IDs, and
+  schema-invalid candidate fields are classified before calling the evaluator
+- output_normalization: official evaluate_v1.0.py normalization and scoring
+  behavior at the pinned evaluator commit; missing fields or row alignment
+  failures are evaluator errors, not native scored failures
 - target_representation: gold answer, gold supporting paragraphs, and official
   answerability/contrast labels
 - answer_component: mandatory; primary raw `answer_f1` in `[0,1]`; auxiliary
@@ -288,7 +295,8 @@ and component type.
 - deterministic_settings: CPU evaluation, no random seed, fixed input order,
   and one evaluator process
 - timeout: 5 seconds per prediction record
-- malformed_output: deterministic scored failure with a malformed-field reason
+- malformed_output: adapter records candidate missing or invalid fields as
+  scored failure; the official evaluator is called only for schema-valid rows
 - evaluator_error: separate status for evaluator failure or prediction/gold
   alignment failure; candidate answer/support failure is not evaluator error
 - unscorable_policy: separate status only when the frozen evaluator cannot
@@ -351,8 +359,10 @@ composites are generated. A cross-split parent union is invalid.
   during decoding.
 
 The number and boundaries of block groups, hardware-executable schedule
-codebook, model, dataset, and backend remain open decisions. The exact router
-inputs beyond the routing-time boundary are also not fixed by this decision.
+codebook, model, and quantization backend remain open decisions. The Issue #7
+task-suite dataset sources are resolved; archive checksums and final manifests
+are preflight artifacts. Exact router inputs beyond the routing-time boundary
+are also not fixed by this decision.
 
 ## Resolved quality judgment unit
 
@@ -448,8 +458,9 @@ nondeterminism make the pair not quality-safe but are recorded separately from
 measured quality violations. BF16 reference failure is recorded separately and
 does not itself imply a violation.
 
-The exact absolute criteria, BF16-relative criteria, metric directions, floors,
-margins, and evaluator versions remain blocked by issue #7.
+The exact absolute criteria, BF16-relative criteria, floors, and margins remain
+Issue #4 decisions. Metric directions and evaluator versions are registered in
+Issue #7; exact archive checksums and final manifests are preflight artifacts.
 
 ## Resolved overall risk target
 
@@ -564,7 +575,8 @@ margins, and evaluator versions remain blocked by issue #7.
 - Each task or request-component type has a predeclared maximum output length
   and stopping rule, frozen before validation and final testing. Reaching the
   maximum before a valid stop is generation truncation. Numeric limits and
-  task-specific stop sequences remain blocked on issue #7.
+  task-specific stop sequences are part of the predeclared execution
+  configuration and are not chosen by Issue #7.
 - Each primary judgment uses one canonical execution, with three
   predeclared repeatability executions on the repeatability set under identical
   conditions. Repetitions and membership are fixed before evaluation.
@@ -575,14 +587,14 @@ margins, and evaluator versions remain blocked by issue #7.
   quality-constraint violation and execution failure unless a distinct cause
   is identified.
 
-## Open prerequisite for exact quality metrics
+## Boundary with Issue #4 exact quality metrics
 
-The repository does not yet define the initial task suite, mandatory
-request-component schema, ground-truth availability, evaluator
-implementations/versions, or scoring outputs. These are tracked in [issue #7](https://github.com/weige15/qab/issues/7),
-which blocks the metric registry and exact quality thresholds in issue #4.
-This specification must not fill those fields with placeholders, BF16
-agreement, KL divergence, or post hoc evaluator choices.
+The initial task suite, request-component schema, ground-truth availability,
+evaluator implementations and versions, scoring outputs, split rules, and
+leakage controls are defined by the resolved Issue #7 registry. Exact Issue #4
+quality floors, BF16 margins, risk budgets, and confidence procedures remain
+separate. The registry must not be replaced by BF16 agreement, KL divergence,
+or post hoc evaluator choices.
 
 ## Resolved composite-request aggregation
 
@@ -594,3 +606,145 @@ agreement, KL divergence, or post hoc evaluator choices.
   mandatory component cannot compensate for failure on another.
 - Any scalar utility used later for optimization is separate from the quality
   contract.
+
+## Resolved evaluator-disagreement and denominator policy
+
+- Each evaluator result retains its own raw outputs, extraction trace, status,
+  and pinned version.
+- The declared primary evaluator controls the primary component metric.
+  Auxiliary evaluators and metrics are diagnostic only; scores are never
+  averaged and cannot override the primary evaluator.
+- No fallback evaluator is used in the primary study. Manual adjudication is
+  permitted only for a frozen audit/error-analysis sample and cannot alter
+  primary scores, thresholds, or schedule labels.
+- Pre-execution filtering is permitted only for source-defined validity or
+  leakage reasons independent of model outputs. Filtering cannot depend on
+  BF16, INT8, or INT4 outcomes.
+- The canonical evaluation statuses are scored, unscorable_output,
+  evaluator_error, execution_error, and nondeterministic.
+- Scored means that the evaluator produced valid raw metrics; a raw metric of
+  zero does not by itself imply that the Issue #4 quality contract passes or
+  fails.
+- Evaluator disagreement is represented as metadata while retaining every
+  evaluator result. Its fields are present, kind,
+  primary_result_retained, and manual_adjudication. A disagreement does
+  not trigger averaging or fallback.
+- Report separate counts for the frozen manifest, attempted evaluations,
+  scored evaluations, unscorable outputs, evaluator errors, execution errors,
+  nondeterministic outcomes, and pre-execution exclusions.
+- Raw metric denominators use scored evaluations only. The Issue #4 quality
+  risk denominator remains limited to valid, scorable, deterministic
+  evaluations. Non-quality statuses remain visible in attempted-count and
+  exclusion-rate reporting and never count as safe.
+
+The registry records the policy as:
+
+Policy fields:
+  evaluator_disagreement_policy:
+    primary_evaluator_is_authoritative: true
+    auxiliary_metrics_are_diagnostic: true
+    aggregate_scores: false
+    fallback_evaluator_in_primary_study: false
+    manual_adjudication: audit_only
+    model_output_dependent_filtering: forbidden
+    raw_outputs_and_statuses_retained: true
+    nonquality_statuses_never_count_as_safe: true
+
+- Each result also retains evaluator-native status, failure kind, evaluator
+  identifier, and extraction/error trace; normalization never erases native
+  evaluator behavior.
+- The pinned evaluator mappings are: MATH extraction/equivalence outputs,
+  EvalPlus pass/fail/timeout with per-test details, and MuSiQue adapter schema
+  validation plus official evaluator alignment errors.
+- Component-specific native statuses are retained even when the normalized
+  status is scored, unscorable_output, evaluator_error, execution_error, or
+  nondeterministic.
+
+## Resolved registry versioning and freeze policy
+
+- Every artifact that can change a quality judgment is pinned: dataset release,
+  commit or archive checksum; evaluator repository commit and source files;
+  dependency lock and runtime version; evaluator-adapter/parser version;
+  prompt-template content hash; composite-generation procedure, inputs, and
+  seed; test cases and test-harness version; split-manifest hash; and
+  manual-label/adjudication artifact version when present.
+- A registry freeze occurs before any validation or model-output run. The
+  frozen registry is the source for all derived requests and evaluator runs.
+- A final-test freeze occurs before threshold, schedule-codebook, predictor, or
+  router calibration. The final-test manifest and every artifact that can alter
+  its judgments are immutable after this point.
+- After final-test freeze, a change affecting task identity, evaluator
+  behavior, parsing, dependencies, templates, tests, splits, composites, or
+  labels requires a dated scientific change record, invalidation of affected
+  results, and new immutable runs. Old artifacts are never overwritten.
+- Before final-test freeze, an affected change requires the specification and
+  registry hashes to be updated and affected validation/calibration work to be
+  rerun before final testing.
+- Documentation-only changes that cannot affect execution do not reopen Issue
+  #7. This policy does not choose Issue #4 quality floors, BF16 margins, risk
+  budgets, or confidence procedures.
+
+Versioned registry fields are:
+
+  registry_schema_version
+  dataset_revision
+  dataset_archive_checksum
+  evaluator_commit
+  evaluator_dependency_lock_hash
+  adapter_parser_version
+  prompt_template_version_and_hash
+  composite_procedure_version_and_hash
+  test_case_version_and_hash
+  split_manifest_hash
+  manual_adjudication_version
+  final_test_manifest_hash
+
+## Resolved first-profile feasibility budget
+
+- The first profile experiment uses a capped, source-grouped subset rather than
+  the full MATH or MuSiQue populations: 128 MATH atomic requests, all 164
+  HumanEval+ source tasks, 256 native MuSiQue 2/3-hop requests, 128 held-out
+  MuSiQue 4-hop requests, and 128 numeric.final_answer -> code.program
+  composites.
+- The resulting estimate is 804 request identities. HumanEval+ source tasks
+  used as composite parents remain in the same split as their atomic
+  derivatives; source groups are assigned before variants and composites.
+- If S is the schedule count selected under Issue #5, the profile estimate is
+  804*S request-schedule executions. At the current 8–16 schedule scope this is
+  6,432–12,864 executions. Additional baseline conditions are reported as
+  804*B and do not determine the schedule codebook here.
+- Composite requests add component-level evaluator rows but not additional
+  model generations. MATH and MuSiQue scoring are linear CPU work; HumanEval+
+  execution is the dominant evaluator cost and retains native test statuses.
+- Assuming 100–250 KiB per request-schedule record for raw output, traces,
+  metrics, and code test details, the expected raw artifact envelope is roughly
+  1–3 GiB. This is a planning assumption, not a measured result.
+- Full-source MATH or MuSiQue repeated across schedules is outside the first
+  profile budget. Exact runtime and archive checksums require an approved later
+  data/evaluator preflight; no download or GPU run is part of Issue #7.
+- The 164-task HumanEval+ source population is a recorded statistical-power
+  limitation. The first profile experiment must not overstate independent code
+  family safety evidence. This feasibility budget does not set Issue #4
+  quality floors, margins, risk budgets, or confidence procedures.
+
+The registry records the budget as:
+
+feasibility_budget:
+  first_profile_request_cap: 804
+  math_atomic_requests: 128
+  humaneval_plus_source_tasks: 164
+  musique_native_requests: 256
+  musique_held_out_4hop_requests: 128
+  numeric_code_composites: 128
+  schedule_count: issue_5_parameter
+  estimated_request_schedule_executions: 6432_to_12864
+  full_source_population_in_first_profile: false
+  local_gpu_execution: forbidden
+  exact_runtime_status: unmeasured_until_approved_preflight
+  statistical_power_limitations: recorded
+
+- Source-count correction: the official MuSiQue-Full v1.0 population is 49,628
+  rows (39,876 train, 4,834 dev, 4,918 test). Earlier approximately-25,000
+  wording referred to answerable rows rather than the Full population and is
+  not the suite-size denominator. The accepted 804-request profile cap remains
+  unchanged and samples only a declared subset.
