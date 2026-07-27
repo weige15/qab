@@ -2,10 +2,9 @@
 
 ## Status
 
-The adaptation unit and routing decision point are resolved. The quality
-contract structure and Issue #7 task/evaluator registry are resolved through
-the current preregistration decisions. Issue #4 numeric thresholds remain
-open. The model, quantization backend, block-group boundaries, schedule
+The adaptation unit, routing decision point, task/evaluator registry, and
+per-request quality contract are resolved through the current preregistration
+decisions. The model, quantization backend, block-group boundaries, schedule
 codebook, and exact router inputs remain open under their separate decisions.
 
 ## Research objective
@@ -22,9 +21,8 @@ quality-safe schedules beyond trivial, task-label, length, difficulty, and
 generic-semantic baselines. The suite prioritizes deterministic component
 judgments and held-out compositional generalization over benchmark breadth.
 
-This purpose is the issue #7 commitment for the initial suite. It does not
-choose issue #4 quality floors, BF16 non-inferiority margins, acceptable
-quality-loss percentages, router risk budgets, or confidence-bound procedures.
+This purpose is the initial-suite commitment; the per-request quality contract
+is specified in the normative section below.
 
 ## Resolved suite priority
 
@@ -34,8 +32,7 @@ quality-loss percentages, router risk budgets, or confidence-bound procedures.
   composite requests with jointly necessary components.
 - Secondary: capability breadth beyond the selected component families.
 
-This priority does not choose issue #4 quality floors, BF16 non-inferiority
-margins, quality-loss percentages, router risk budgets, or confidence bounds.
+The per-request quality contract is specified in the normative section below.
 
 ## Resolved initial component-family count
 
@@ -195,7 +192,8 @@ and component type.
   result
 - evaluator_error: a separate evaluator-error status, not a task failure
 - unscorable_policy: a separate unscorable status when no valid judgment can
-  be produced; it remains in attempted and denominator counts
+  be produced; it remains in attempted and exclusion reporting, not the
+  scored metric or assessable safety denominator
 
 
 ## Resolved executable-code task family
@@ -247,7 +245,8 @@ and component type.
   candidate exceptions are scored failures and candidate process timeouts retain
   native timeout with normalized scored status
 - unscorable_policy: separate status only when the evaluator cannot validly
-  judge; it remains in attempted and denominator counts
+  judge; it remains in attempted and exclusion reporting, not the scored metric
+  or assessable safety denominator
 
 ## Resolved fixed-context QA task family
 
@@ -300,7 +299,8 @@ and component type.
 - evaluator_error: separate status for evaluator failure or prediction/gold
   alignment failure; candidate answer/support failure is not evaluator error
 - unscorable_policy: separate status only when the frozen evaluator cannot
-  validly judge the task; it remains in attempted and denominator counts
+  validly judge the task; it remains in attempted and exclusion reporting, not
+  the scored metric or assessable safety denominator
 
 ## Resolved allowed initial composition set
 
@@ -442,25 +442,39 @@ are also not fixed by this decision.
 
 ## Resolved request–schedule Boolean rule
 
-For request q, candidate schedule s, and mandatory component set M(q),
-quality_safe(q, s) is true if and only if every component has a valid
-deterministic candidate evaluation, passes its absolute-quality criterion, and
-either:
+The normative Issue #4 contract is recorded in the section
+“Normative per-request quality contract” below. In summary, for request \(q\),
+candidate schedule \(s\), and mandatory component set \(M(q)\), quality safety
+is a conjunction over components; it is not an average or compensatory score.
 
-1. BF16 passes absolute quality and the candidate is within the
-   preregistered BF16 non-inferiority margin; or
-2. BF16 has a recorded reference failure.
+A component's absolute label is:
 
-A quality-constraint violation is true only when a valid deterministic
-candidate evaluation fails an applicable absolute or BF16-relative criterion.
-Unscorable output, evaluator failure, hardware execution failure, and
-nondeterminism make the pair not quality-safe but are recorded separately from
-measured quality violations. BF16 reference failure is recorded separately and
-does not itself imply a violation.
+\[
+\operatorname{absolute\_pass}_c(q,s)
+\iff
+\operatorname{status}_c(q,s)=\operatorname{scored}
+\land
+m_c(q,s)\ \text{meets the frozen absolute criterion}.
+\]
 
-The exact absolute criteria, BF16-relative criteria, floors, and margins remain
-Issue #4 decisions. Metric directions and evaluator versions are registered in
-Issue #7; exact archive checksums and final manifests are preflight artifacts.
+For higher-is-better component metrics, the BF16-relative label is separate:
+
+\[
+\operatorname{BF16\mbox{-}noninferior}_c(q,s)
+\iff
+\operatorname{status}_c(q,\mathrm{BF16})=\operatorname{scored}
+\land
+m_c(q,s)\ge m_c(q,\mathrm{BF16})-\delta_c.
+\]
+
+A candidate whose BF16 reference is itself an absolute-quality failure is judged
+against the absolute criterion; the BF16-relative condition is inapplicable and
+the reference failure is reported separately. Missing or invalid required
+judgments, evaluator or execution errors, and nondeterminism are
+`not_assessable`, never silent passes or measured violations. The exact
+component criteria, status mapping, denominators, risk gate, and change
+control are normative below. Issue #7 remains authoritative for evaluator
+versions, raw metric outputs, and normalized statuses.
 
 ## Resolved overall risk target
 
@@ -473,12 +487,22 @@ Issue #7; exact archive checksums and final manifests are preflight artifacts.
 
 ## Resolved risk strata
 
-- Risk is reported within strata formed by predeclared task type and mandatory
-  request-component composition.
-- Stratum definitions and membership are frozen before validation and final
-  testing.
-- No stratum may be created, split, merged, or redefined using final-test
-  outcomes. Exact labels are specified by the issue #7 evaluator registry.
+- Risk strata are predeclared request-level populations:
+  - `math.atomic` (MATH atomic);
+  - `code.atomic` (HumanEval+ atomic);
+  - `qa.native.2_3hop` (native MuSiQue 2/3-hop);
+  - `qa.heldout.4hop` (held-out MuSiQue 4-hop);
+  - `numeric.final_answer->code.program` (numeric-to-code composite).
+- Each request–schedule pair contributes one observation to exactly one base
+  stratum. MuSiQue answer and support remain component judgments inside one
+  QA request stratum.
+- Split identity, composition signature, evaluator family, and hop regime are
+  part of the frozen membership predicates.
+- Additional legitimate intersections enter the primary gate only when
+  predeclared before outcomes and sufficiently supported; otherwise they are
+  diagnostic only. Any added gate group increases K and triggers recalculation
+  of the confidence adjustment and minimum support.
+- No group may be created, split, merged, or redefined using outcomes.
 
 ## Resolved risk aggregation
 
@@ -490,29 +514,53 @@ Issue #7; exact archive checksums and final manifests are preflight artifacts.
 
 ## Resolved confidence and sample-size feasibility
 
-- For each predeclared risk stratum, estimate violation probability with a
-  one-sided exact Clopper–Pearson upper confidence bound.
-- Use Bonferroni adjustment across the predeclared strata to provide 95%
-  familywise confidence.
-- The worst-group risk gate passes only when every stratum's upper bound is at
-  most 0.05.
-- For K strata, the minimum per-stratum sample size is the smallest integer
-  satisfying the zero-violation upper-bound condition:
-  n_min(K) = ceil(log(0.05 / K) / log(1 - 0.05)).
-- A stratum below n_min(K) is underpowered and cannot support a final safety
-  claim. It must not be silently merged, waived, or declared safe.
-- Issue #7 supplies K and the actual stratum counts; until then, exact
-  feasibility remains unresolved.
+- The accepted violation-risk budget is \(\alpha=0.05\), with one-sided 95%
+  familywise confidence across the five predeclared base strata.
+- For each stratum, use the exact one-sided Clopper–Pearson upper bound:
+  \(U_{\mathrm{CP}}(k,n;\gamma)=
+  \operatorname{Beta}^{-1}(\gamma;k+1,n-k)\), with
+  \(\gamma=1-\alpha/K=0.99\) for \(K=5\). The worst-group gate passes only
+  when every \(U_{\mathrm{CP}}\le\alpha\).
+- The planned Issue #7 caps are \(n=(128,164,256,128,128)\). The largest
+  allowed violation counts \(k\) under the CP gate are:
+
+  | Planned group size | \(\alpha=0.01\) | \(\alpha=0.05\) | \(\alpha=0.10\) |
+  | ---: | ---: | ---: | ---: |
+  | 128 | none | 0 | 5 |
+  | 164 | none | 1 | 7 |
+  | 256 | none | 4 | 14 |
+
+  “None” means that even zero observed violations cannot meet the stated
+  99%-per-group upper bound. This planning table uses only the declared counts,
+  not model outputs.
+- With \(K\) predeclared strata, zero observed violations require
+  \(n_{\min}(K)=\left\lceil
+  \log(\alpha/K)/\log(1-\alpha)\right\rceil\). For \(K=5\) and
+  \(\alpha=0.05\), \(n_{\min}=90\). A group below this support is underpowered:
+  it cannot pass the safety gate, is not counted as a violation merely for being
+  underpowered, and must not be silently merged, waived, or redefined.
+- Adding a primary intersection group increases \(K\), so the Bonferroni level
+  and minimum-support calculation must be recomputed before outcomes.
 
 ## Resolved risk denominators
 
-- Quality-violation risk is computed over valid, scorable, deterministic
-  candidate evaluations.
-- Evaluator failures, hardware execution failures, unscorable outputs, and
-  nondeterministic outcomes are excluded from that numerator and denominator.
-- Those non-quality exclusions are reported separately over all attempted
-  request–precision-schedule pairs and never count as safe.
-- Exclusion rates cannot be hidden or used to claim serving readiness.
+- The frozen manifest denominator contains every eligible request identity and
+  its declared mandatory components.
+- The attempted denominator contains every manifest request–schedule pair
+  submitted for execution or scoring, including non-quality statuses.
+- The scored denominator is evaluator-specific: it contains records for which
+  that primary evaluator emitted valid raw metrics. The assessable denominator
+  contains complete request–schedule pairs whose mandatory components are
+  valid, deterministic, scored judgments and whose required BF16 reference
+  conditions are available.
+- Violation risk is estimated only over assessable request–schedule pairs.
+  `unscorable_output`, `evaluator_error`, `execution_error`, and
+  `nondeterministic` are retained in status and exclusion reporting, never
+  count as safe, and are not silently converted into violations.
+- Manifest, attempted, assessable, and scored counts are reported together;
+  component metric denominators are not substituted for the request-level
+  safety denominator. Exclusion rates cannot be hidden or used to claim
+  serving readiness.
 
 ## Resolved quality and optimization boundary
 
@@ -525,13 +573,22 @@ Issue #7; exact archive checksums and final manifests are preflight artifacts.
 
 ## Resolved split roles
 
-- Training data may fit predeclared model or evaluator parameters.
-- Validation data may calibrate or select only predeclared non-final modeling
-  choices.
-- The final-test split is reserved for evaluating the frozen quality contract
-  and predictor.
+- Train may fit only the learned predictor/representation parameters and
+  train-derived normalization under the preregistered fitting procedure. It
+  may not fit evaluator semantics or quality labels.
+- Validation may tune or calibrate only preregistered predictor, uncertainty, or
+  operating choices. It may not alter the contract, evaluator registry,
+  thresholds, margins, statuses, denominators, risk budget, groups, or split
+  definitions.
+- The contract, evaluator pins and adapters, prompt/composition identities,
+  decoding configuration, exclusion predicates, denominator policy, risk rule,
+  and group definitions must be frozen and hashed before validation quantized
+  outputs are inspected.
+- IID final and held-out-composition final are each evaluated once under the
+  same frozen contract and policy, and are reported separately. No tuning or
+  refitting occurs between them.
 - No final-test outcome may select or tune metrics, tolerances, strata,
-  schedules, thresholds, or decision rules.
+  schedules, thresholds, denominators, groups, or decision rules.
 
 ## Resolved validation calibration
 
@@ -577,9 +634,9 @@ Issue #7; exact archive checksums and final manifests are preflight artifacts.
   maximum before a valid stop is generation truncation. Numeric limits and
   task-specific stop sequences are part of the predeclared execution
   configuration and are not chosen by Issue #7.
-- Each primary judgment uses one canonical execution, with three
-  predeclared repeatability executions on the repeatability set under identical
-  conditions. Repetitions and membership are fixed before evaluation.
+- Each primary judgment uses one canonical execution. Any repeatability
+  evaluation, including its seed list and membership, must be predeclared and
+  frozen separately from the primary judgment.
 - If executions with identical request, precision schedule, decoding
   condition, and seed produce different outputs or quality judgments, the pair
   is recorded as nondeterministic and is not quality-safe. No majority vote or
@@ -591,10 +648,11 @@ Issue #7; exact archive checksums and final manifests are preflight artifacts.
 
 The initial task suite, request-component schema, ground-truth availability,
 evaluator implementations and versions, scoring outputs, split rules, and
-leakage controls are defined by the resolved Issue #7 registry. Exact Issue #4
-quality floors, BF16 margins, risk budgets, and confidence procedures remain
-separate. The registry must not be replaced by BF16 agreement, KL divergence,
-or post hoc evaluator choices.
+leakage controls are defined by the resolved Issue #7 registry. The exact
+per-request quality contract is now defined in the normative Issue #4 section
+below, while Issue #7 remains authoritative for raw evaluator metrics and
+normalized evaluator statuses. The registry must not be replaced by BF16
+agreement, KL divergence, or post hoc evaluator choices.
 
 ## Resolved composite-request aggregation
 
@@ -633,9 +691,10 @@ or post hoc evaluator choices.
   scored evaluations, unscorable outputs, evaluator errors, execution errors,
   nondeterministic outcomes, and pre-execution exclusions.
 - Raw metric denominators use scored evaluations only. The Issue #4 quality
-  risk denominator remains limited to valid, scorable, deterministic
-  evaluations. Non-quality statuses remain visible in attempted-count and
-  exclusion-rate reporting and never count as safe.
+  risk denominator is the assessable request-level denominator: complete,
+  valid, scorable, deterministic candidate/reference pairs. Non-quality
+  statuses remain visible in attempted-count and exclusion-rate reporting and
+  never count as safe.
 
 The registry records the policy as:
 
@@ -681,8 +740,9 @@ Policy fields:
   registry hashes to be updated and affected validation/calibration work to be
   rerun before final testing.
 - Documentation-only changes that cannot affect execution do not reopen Issue
-  #7. This policy does not choose Issue #4 quality floors, BF16 margins, risk
-  budgets, or confidence procedures.
+  #7. The Issue #4 quality contract separately freezes the interpretation of
+  evaluator outputs, request-level safety labels, risk denominators, and
+  confidence procedures.
 
 Versioned registry fields are:
 
@@ -724,8 +784,9 @@ Versioned registry fields are:
   data/evaluator preflight; no download or GPU run is part of Issue #7.
 - The 164-task HumanEval+ source population is a recorded statistical-power
   limitation. The first profile experiment must not overstate independent code
-  family safety evidence. This feasibility budget does not set Issue #4
-  quality floors, margins, risk budgets, or confidence procedures.
+  family safety evidence. This feasibility budget is separate from quality
+  semantics; the risk planning table in the normative Issue #4 contract uses
+  these declared group caps without inspecting model outputs.
 
 The registry records the budget as:
 
@@ -748,3 +809,330 @@ feasibility_budget:
   wording referred to answerable rows rather than the Full population and is
   not the suite-size denominator. The accepted 804-request profile cap remains
   unchanged and samples only a declared subset.
+
+## Normative per-request quality contract
+
+**Contract identifier:** `qab.per_request_quality_contract.v1`
+
+This section is the authoritative resolution of “Define the per-request quality
+contract.” It defines request-level quality semantics, component criteria,
+reference pairing, status and denominator interpretation, risk gates, split
+roles, and change control. Issue #7 remains authoritative for the evaluator
+registry, evaluator versions, raw metric outputs, native statuses, and
+normalized status mapping. No threshold, evaluator, dataset, composition
+signature, or split grouping is selected from final-test outcomes.
+
+### Contract semantics
+
+Let \(q\) be a frozen request, \(s\) a candidate precision schedule, and
+\(M(q)\) its set of mandatory components. Let \(m_c(q,s)\) be the primary raw
+metric for component \(c\), and let \(\mathcal A_c\) be its frozen absolute
+criterion. For a deterministic scored component result:
+
+\[
+\operatorname{absolute\_pass}_c(q,s)
+\iff
+\operatorname{status}_c(q,s)=\mathrm{scored}
+\land
+m_c(q,s)\in\mathcal A_c.
+\]
+
+For each higher-is-better component, the BF16-relative label is separate from
+the absolute label:
+
+\[
+\operatorname{BF16\mbox{-}noninferior}_c(q,s)
+\iff
+\operatorname{status}_c(q,\mathrm{BF16})=\mathrm{scored}
+\land
+m_c(q,s)\ge m_c(q,\mathrm{BF16})-\delta_c.
+\]
+
+The inequality is inclusive. A candidate improvement over BF16 satisfies the
+relative condition and is recorded separately as an improvement; it does not
+change the absolute criterion or establish a general quantization-improvement
+claim.
+
+If BF16 is scored but fails its absolute criterion, it is a BF16 reference
+failure. The candidate is still judged against \(\mathcal A_c\), and the
+BF16-relative condition is inapplicable for that component. If the BF16
+reference is unscorable, an evaluator error, an execution error, or
+nondeterministic, the candidate's independently available absolute result is
+retained, but the complete request–schedule pair is \(\mathrm{not\_assessable}\).
+
+Define \(\operatorname{assessable}(q,s)\) to require a valid, deterministic,
+scored candidate judgment for every mandatory component and either a scored
+BF16 reference or a scored BF16 reference failure for every mandatory
+component. Then:
+
+\[
+\operatorname{quality\_safe}(q,s)
+\iff
+\operatorname{assessable}(q,s)
+\land
+\bigwedge_{c\in M(q)}
+\operatorname{absolute\_pass}_c(q,s)
+\land
+\bigwedge_{\substack{c\in M(q)\\
+  \operatorname{absolute\_pass}_c(q,\mathrm{BF16})}}
+\operatorname{BF16\mbox{-}noninferior}_c(q,s).
+\]
+
+Here \(\operatorname{component\_safe}_c(q,s)\) means the candidate absolute
+pass plus the BF16-relative pass when the BF16 component is absolutely
+successful; it is satisfied by an absolute candidate pass alone when BF16 has a
+recorded reference failure.
+
+\[
+\operatorname{violation}(q,s)
+\iff
+\operatorname{assessable}(q,s)
+\land
+\neg\operatorname{quality\_safe}(q,s).
+\]
+
+Thus, \(\mathrm{not\_assessable}\) is a distinct request-level outcome, not a
+quality pass and not a measured violation. A \(\mathrm{violation}\) is only a
+valid scored candidate/reference judgment that fails an applicable absolute or
+BF16-relative condition. The labels \(\mathrm{absolute\_pass}\),
+\(\mathrm{BF16\mbox{-}noninferior}\), \(\mathrm{quality\_safe}\),
+\(\mathrm{violation}\), and \(\mathrm{not\_assessable}\) are retained
+separately.
+
+The quality-safe schedule set and hardware-feasible intersection are:
+
+\[
+S_{\mathrm{quality}}(q)=
+\{s:\operatorname{quality\_safe}(q,s)\},
+\qquad
+S_{\mathrm{feasible}}(q)=
+S_{\mathrm{quality}}(q)\cap S_{\mathrm{hardware}}(q).
+\]
+
+\(\operatorname{no\_quality\_safe\_schedule}(q)\) holds when
+\(S_{\mathrm{quality}}(q)=\varnothing\). \(\operatorname{no\_feasible\_schedule}(q)\)
+holds when \(S_{\mathrm{quality}}(q)\ne\varnothing\) but
+\(S_{\mathrm{feasible}}(q)=\varnothing\). The latter is a feasibility outcome,
+not a quality failure.
+
+### BF16 reference condition
+
+The BF16 and candidate executions use the same immutable request: prompt,
+supplied context, required output contract/template, tokenizer, extraction and
+normalization rules, evaluator version and protocol, field mapping, decoding
+algorithm, sampling controls, temperature, top-p/top-k, repetition controls,
+stop sequences, tie-break rule, stopping rule, and maximum output length. The
+only intended condition difference is the weight-precision schedule. The
+primary seed policy is one predeclared seed, with any additional robustness
+seed list frozen separately. Reaching the maximum output length is a candidate
+generation result and is evaluated under the component contract.
+
+BF16 and candidate raw outputs, extraction traces, evaluator statuses, and
+metrics are retained as paired records. Candidate improvements over a valid
+BF16 result are reported, but the BF16 output remains a reference condition and
+not ground truth. A wrong BF16 output does not make a correct candidate unsafe;
+an equally wrong candidate fails its own absolute criterion and is a
+violation when the pair is otherwise assessable.
+
+### Component contract
+
+| Component | Primary raw metric | Absolute criterion | BF16 margin \(\delta_c\) | Required status interpretation |
+| --- | --- | --- | ---: | --- |
+| MATH numeric equivalence | `equivalent` | `equivalent = 1` | 0 | Valid extraction plus equivalence is scored 1; valid non-equivalence is scored 0; invalid or missing extraction is `unscorable_output` with metric null/absent; evaluator/parser infrastructure failure is `evaluator_error` with metric null/absent. |
+| HumanEval+ code behavior | `plus_pass` | `plus_pass = 1` | 0 | Candidate exception, malformed solution, or candidate-caused timeout is a scored failure with native status retained; evaluator/infrastructure failure is not a scored candidate failure. |
+| MuSiQue answer | `answer_f1` | `answer_f1 >= 0.80` | 0.05 | Mandatory answer component; `answer_em` and group sufficiency are auxiliary diagnostics. |
+| MuSiQue supporting evidence | `support_f1` | `support_f1 >= 0.80` | 0.05 | Mandatory evidence component; group support sufficiency is auxiliary diagnostics. |
+
+The binary gates are exact. The MuSiQue floors are inclusive continuous-score
+floors. Auxiliary metrics are retained and reported separately; they are never
+averaged into a primary component score and cannot change a primary gate.
+Thresholds and margins are frozen before validation quantized outputs and are
+not selected from final-test outcomes.
+
+### Component-to-request aggregation
+
+Every mandatory component must be assessable and pass. For all allowed atomic
+and composite signatures:
+
+\[
+\operatorname{quality\_safe}(q,s)
+\iff
+\bigwedge_{c\in M(q)}\operatorname{component\_safe}_c(q,s).
+\]
+
+Averaging, weighted averaging, scalar compensation, or offsetting one
+component's failure with another component's improvement is prohibited. Native
+MuSiQue requests require both answer and supporting-evidence components to pass.
+A numeric final-answer-to-code-program composite requires both the numeric and
+code components to pass. Auxiliary components do not alter the primary
+request-level label.
+
+### Status and denominator policy
+
+Issue #7 defines the following normalized statuses and preserves each
+evaluator-native status and failure trace:
+
+| Normalized status | Meaning | Candidate quality label | Manifest / attempted / scored / assessable |
+| --- | --- | --- | --- |
+| `scored` | The primary evaluator produced valid raw metrics. | Absolute pass or scored failure, as dictated by the component criterion. | In manifest, attempted, and scored; assessable only when the complete request and required BF16 references are valid and deterministic. |
+| `unscorable_output` | A candidate output exists, but the frozen evaluator cannot produce a valid judgment under its protocol. | `not_assessable`; never silently pass or become a violation. Component metric is null/absent. | In manifest and attempted; not scored or assessable. |
+| `evaluator_error` | Evaluator, parser, configuration, dependency, or evaluator-service infrastructure failed independently of candidate quality. | `not_assessable`; not a violation. | In manifest and attempted; not scored or assessable. |
+| `execution_error` | Inference, backend, hardware, transport, or recording failed before a usable candidate judgment. | `not_assessable`; not a violation. | In manifest and attempted; not scored or assessable. |
+| `nondeterministic` | Repeated executions under identical frozen conditions conflict in output or judgment. | `not_assessable`; preserve every outcome and do not majority-vote. | In manifest and attempted; not scored or assessable. |
+| Pre-execution exclusion | Frozen manifest-integrity or scientific-eligibility predicate fails before execution. | No quality label; never a safe result. | In the frozen manifest and exclusion denominator; not attempted, scored, or assessable. |
+
+A candidate-caused HumanEval+ exception or timeout is a scored failure with
+`plus_pass=0`, not an evaluator or execution error. A MATH invalid or missing
+extraction follows Issue #7's `unscorable_output` rule. An evaluator or parser
+infrastructure timeout follows `evaluator_error` or
+`execution_error`, according to the failing layer.
+
+The manifest denominator is all frozen eligible records; attempted is all
+submitted request–schedule evaluations; scored is the valid raw-metric
+denominator for a primary evaluator; assessable is the complete request-level
+denominator needed for the safety gate. Component metric denominators and the
+request-level assessable denominator are reported separately. Non-quality
+statuses and exclusions remain visible and never count as safe.
+
+### Non-quality exclusions and optimization boundary
+
+Pre-execution exclusions are permitted only when their predicates are frozen
+from the request manifest and independent of precision, model outputs,
+predictions, schedules, or quality outcomes. Examples are missing ground truth
+or evaluator identity, invalid registry rows, leakage or duplicate violations,
+invalid split assignment, and unsupported composition signatures. These records
+remain in manifest accounting and exclusion reporting but are not attempted
+quality judgments.
+
+Hardware eligibility and schedule compatibility are separate feasibility
+predicates. Latency, memory, throughput, energy, batching, serving behavior,
+and hardware choice cannot alter the quality-safe label. A faster schedule that
+violates quality remains a violation; a slower schedule that is quality-safe
+remains quality-safe. Later selection may use only the intersection of
+quality-safe and hardware-feasible schedules.
+
+### Violation-risk and worst-group gate
+
+A deterministic pair label and a method's empirical risk are different objects:
+
+\[
+\operatorname{violation}(q,s)\in\{0,1\},
+\qquad
+R(\pi)=
+\Pr_q[\operatorname{violation}(q,\pi(q))
+\mid \operatorname{assessable}(q,\pi(q))].
+\]
+
+The non-assessable rate for \(\pi\) is reported separately and cannot be hidden
+by the conditional risk denominator.
+
+The accepted risk budget is \(\alpha=0.05\). The primary gate is a worst-group
+gate with one-sided 95% familywise confidence. The five predeclared base groups
+are:
+
+1. MATH atomic;
+2. HumanEval+ atomic;
+3. native MuSiQue 2/3-hop;
+4. held-out-composition MuSiQue 4-hop;
+5. numeric final-answer-to-code-program composite.
+
+Each request–schedule pair belongs to exactly one base group. Group membership is
+frozen from evaluator/component family, atomic or composite signature, MuSiQue
+hop count, split identity, and any declared intersection fields before
+outcomes are observed. MuSiQue answer and evidence are components within one QA
+request group. Additional intersections are primary only if predeclared and
+sufficiently supported; each added group increases \(K\), requiring a new
+Bonferroni and minimum-support calculation. Favorable groups may not be
+selected after outcomes.
+
+For \(k\) violations among \(n\) assessable observations and \(K\) primary
+groups, use the exact one-sided Clopper–Pearson upper bound:
+
+\[
+U_{\mathrm{CP}}(k,n;\gamma)
+=
+\operatorname{Beta}^{-1}(\gamma;k+1,n-k),
+\qquad
+\gamma=1-\alpha/K.
+\]
+
+The gate passes only if \(U_{\mathrm{CP}}\le\alpha\) for every sufficiently
+supported primary group. With \(K=5\), \(\alpha=0.05\), and zero violations,
+the minimum support is:
+
+\[
+n_{\min}(K)
+=
+\left\lceil
+\frac{\log(\alpha/K)}{\log(1-\alpha)}
+\right\rceil
+=90.
+\]
+
+A group below this support is underpowered: it cannot pass the gate, is not
+itself counted as a violation, and cannot be merged, waived, or redefined
+post hoc. The planned Issue #7 caps are 128, 164, 256, 128, and 128; the
+candidate-budget planning table appears in the preceding resolved
+sample-size section and uses no model outputs. Average risk is secondary and
+cannot compensate for a failing group.
+
+### Split roles
+
+| Split | Permitted use | Prohibited use |
+| --- | --- | --- |
+| Train | Fit predictor/representation parameters and train-derived normalization under the preregistered procedure. | Fitting evaluator semantics, contract thresholds, risk rules, or any final-test information. |
+| Validation | Tune/calibrate preregistered predictor, uncertainty, and operating choices. | Changing evaluator pins, metrics, floors, margins, statuses, denominators, groups, splits, or the contract. |
+| IID final | One-shot evaluation of the frozen predictor and contract on seen signatures. | Any tuning, refitting, threshold selection, or policy revision. |
+| Held-out final | One-shot evaluation of the frozen predictor and contract on held-out composition. | Any tuning, refitting, threshold selection, or policy revision. |
+
+All judgment-affecting contract, registry, prompt/template, composition,
+decoding, exclusion, denominator, risk, group, and split inputs must be frozen
+and hashed before validation quantized outputs are inspected. IID and held-out
+final results are reported separately. Final outcomes cannot drive any
+threshold, margin, denominator, group, evaluator, split, or contract change.
+
+### Freeze and change control
+
+The freeze bundle for `qab.per_request_quality_contract.v1` covers the
+normative sections and equations in `docs/research-spec.md`, canonical
+glossary definitions in `CONTEXT.md`, the authoritative decision ledger,
+the dated scientific decision record, all component tables and formulas,
+evaluator IDs, commits, adapters, parsers and dependency hashes, prompt and
+composition identifiers and hashes, decoding/seed/stopping/length
+configuration, request/leakage/split manifests and hashes, and the eventual
+model, backend, block-group, and schedule identities.
+
+A bug fix is a semantics-preserving correction to documentation or evaluator
+implementation. If it can change a label, the affected labels and results are
+invalidated and rerun even if the contract version remains unchanged. A
+scientific-policy change alters thresholds, margins, evaluator or extraction
+semantics, statuses, denominators, exclusions, aggregation, strata, splits,
+confidence rules, or any other judgment-affecting field. It requires a dated
+amendment, a version bump, retention of old results, and reruns for every
+affected artifact.
+
+Before final-test unblinding, correct the affected artifact, record the
+amendment, rerun affected validation/calibration work, and refreeze all hashes.
+After final-test unblinding, preserve and mark affected final results invalid;
+do not patch the revealed set or reuse it as if untouched. A new untouched
+confirmatory final set is required for a replacement claim, and original
+invalidated and replacement results are reported separately. A documentation-
+only correction with no judgment effect requires no new final set.
+
+### Worked edge-case truth table
+
+| Case | Result under this contract |
+| --- | --- |
+| BF16 wrong; INT4 correct | BF16 reference failure; INT4 can be quality-safe if its absolute gate passes; relative label is inapplicable; record reference-comparative improvement; no violation. |
+| BF16 wrong; INT4 equally wrong | Both are scored absolute failures; INT4 is a violation if otherwise assessable; retain BF16 reference failure; make no causality claim. |
+| BF16 unscorable; candidate scored | Retain candidate absolute result; complete pair is `not_assessable`; no safe or violation label. |
+| Candidate unscorable | `not_assessable`; not quality-safe and not a violation. |
+| MATH passes; code fails in composite | Conjunction fails; deterministic scored pair is a violation. |
+| MuSiQue answer passes; evidence fails | Conjunction fails; deterministic scored pair is a violation. |
+| Candidate-generated code times out | Candidate-caused timeout is scored `plus_pass=0`; retain native timeout; violation if the complete pair is otherwise assessable. |
+| Evaluator infrastructure times out | `evaluator_error` or `execution_error` by failing layer; `not_assessable`, not a violation. |
+| Conflicting repeated outcomes | Preserve all outputs; normalized status `nondeterministic`; `not_assessable`; no majority or cherry-pick. |
+| Faster schedule violates quality | It is a quality violation regardless of speed; latency and throughput remain separate measurements. |
+| Group has too few examples | Underpowered; cannot pass the worst-group gate; not itself a violation; no post-hoc merge or group selection. |
+| Evaluator bug found before final-test unblinding | Record amendment; classify affected outputs; rerun affected pre-final work; refreeze before final testing. |
+| Evaluator bug found after final-test unblinding | Preserve and invalidate affected results; amend/version as required; evaluate a new untouched confirmatory final set. |

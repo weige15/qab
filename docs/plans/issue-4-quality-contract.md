@@ -1,4 +1,8 @@
 # Issue #4: Per-request quality contract
+> **Status: PROVISIONAL, NON-AUTHORITATIVE PRE-GRILL NOTES.**
+>
+> No policy in this document is accepted until confirmed through the
+> human-in-the-loop resolution of “Define the per-request quality contract.”
 
 ## Scientific objective
 

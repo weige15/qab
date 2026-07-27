@@ -136,7 +136,27 @@ merged before split assignment.
 
 **Quality contract**:
 The preregistered rule that determines whether a request–precision-schedule
-pair is quality-safe or violates a quality constraint.
+pair is quality-safe, a quality-constraint violation, or not assessable.
+
+**Absolute pass**:
+A component result with a valid scored evaluation that meets its frozen
+absolute-quality criterion.
+
+**BF16-noninferior**:
+A candidate result that satisfies the applicable frozen relative condition
+against the paired BF16 reference. It is comparative and does not replace the
+absolute-quality criterion.
+
+**Not assessable**:
+An outcome for which the full quality contract cannot determine pass or
+violation because a required candidate or reference judgment is unavailable,
+invalid, evaluator-failed, execution-failed, or nondeterministic. The
+underlying normalized and evaluator-native statuses remain recorded.
+
+**Assessable pair**:
+A complete request–precision-schedule pair with valid, deterministic, scored
+judgments for every mandatory component and the required BF16 reference
+conditions.
 
 **Quality judgment unit**:
 The object for which quality is recorded. This study uses both the individual
@@ -168,12 +188,12 @@ disqualifying non-quality status.
 
 **Violation-risk budget**:
 The predeclared maximum tolerated probability of a quality-constraint
-violation for the declared evaluation population. The initial target is
-alpha = 0.05.
+violation for the declared evaluation population.
 
 **Risk stratum**:
-A predeclared subset of the evaluation population defined here by task type
-and mandatory request-component composition.
+A predeclared subset of the evaluation population defined by frozen evaluator
+or component family, composition signature, split identity, hop regime, or
+legitimate intersections.
 
 **Worst-group risk gate**:
 The safety requirement that every predeclared risk stratum satisfies the
@@ -199,9 +219,9 @@ by itself evidence that quantization improves quality generally.
 
 **Invalid output**:
 A candidate output that violates a component's explicitly declared output
-format or validity requirements. It is evaluated as a candidate failure,
-unless the evaluator itself cannot operate for an independent implementation
-reason.
+format or validity requirements. The pinned evaluator registry determines
+whether that case is a scored candidate failure or `unscorable_output`; it
+never silently passes.
 
 **Generation truncation**:
 An output that ends because the declared generation limit or stopping rule
@@ -237,6 +257,11 @@ is recorded separately from a measured quality-constraint violation.
 The condition in which no candidate precision schedule satisfies every
 mandatory component's preregistered quality contract for a request. It is
 distinct from hardware infeasibility.
+
+**No feasible schedule**:
+The condition in which at least one quality-safe schedule exists for a request,
+but no quality-safe schedule is eligible under the separately defined hardware
+or execution-feasibility constraints.
 
 **Quality-safe schedule set**:
 The set of candidate precision schedules that satisfy the quality contract

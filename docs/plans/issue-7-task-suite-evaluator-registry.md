@@ -146,9 +146,17 @@ unscorable policy, versioning, and feasibility one decision at a time.
   is the complete candidate response and target; official final/boxed-answer
   extraction and normalization are used; raw `equivalent∈{0,1}` is
   higher-is-better; CPU/no-seed evaluation has a 5-second candidate timeout;
-  malformed output is equivalent=0 when the scorer returns a valid result;
-  evaluator errors and unscorable outputs are separate statuses, and
-  unscorable outputs remain in attempted and denominator counts.
+  valid extraction plus an equivalent answer has
+  `normalized_status=scored, equivalent=1`; valid extraction plus a
+  non-equivalent answer has `normalized_status=scored, equivalent=0`; invalid
+  or missing extraction has `normalized_status=unscorable_output` with
+  `equivalent=null` or absent; and evaluator or parser infrastructure failure
+  has `normalized_status=evaluator_error` with `equivalent=null` or absent.
+  Unscorable outputs and evaluator errors remain separate statuses and remain
+  visible in attempted and denominator reporting. Issue #7 defines evaluator
+  statuses and raw metric outputs only; it does not decide whether
+  `unscorable_output` later maps to a quality-contract violation, which remains
+  Issue #4 scope.
 - Accepted code evaluator protocol: `evalplus.humaneval.v0.3.1` uses
   HumanEval+ v0.1.10 and the pinned EvalPlus commit; `plus_pass` is primary;
   `base_pass`, per-test statuses, and failed-test IDs are auxiliary; one
@@ -180,6 +188,11 @@ unscorable policy, versioning, and feasibility one decision at a time.
 - Evidence correction recorded: MATH extraction/equivalence, EvalPlus native
   timeout/status behavior, and MuSiQue schema/alignment errors are pinned to
   the cited source behavior in the research note and specification.
+
+- Dated correction (2026-07-27): the earlier provisional MATH plan text
+  conflicted with the accepted Issue #7 resolution by mapping malformed output
+  to `equivalent=0`. It was reconciled to the status distinctions above before
+  any Issue #4 quality-contract decisions or experiments.
 
 - Accepted versioning and freeze policy: pin every judgment-affecting dataset,
   evaluator, dependency, runtime, adapter/parser, template, composite
