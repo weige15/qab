@@ -1,0 +1,58 @@
+{
+  "schema_version": "qcb.phase1.config.v1",
+  "codebook": {
+    "codebook_id": "qcb.v1",
+    "generator_id": "qcb.template.v1"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-7B-Instruct",
+    "revision": "a09a35458c702b33eeacc393d103063234e8bc28"
+  },
+  "backend": {
+    "llm_compressor": {"version": "0.9.0", "revision": "129c793fdabfd9bc486f85c444bdec6b713978fe"},
+    "compressed_tensors": {"version": "0.12.2", "revision": "2dd1b627950b4a068f2c1af19bc6f31b7fbb3316"},
+    "vllm": {"version": "0.11.2", "revision": "275de34170654274616082721348b7edd9741d32"},
+    "runtime": {"torch": "2.9.0", "transformers": ">=4.56.0,<5"},
+    "compatibility_status": "unresolved_llm_compressor_dependency_conflict"
+  },
+  "quantization": {
+    "algorithm": "GPTQ",
+    "weight_only": true,
+    "activation_dtype": "BF16",
+    "allowed_schemes": ["W8A16", "W4A16"],
+    "group_size": 128,
+    "symmetric": true,
+    "static_scales": true,
+    "actorder": "weight",
+    "dampening_frac": 0.01,
+    "ignored_modules": ["lm_head"]
+  },
+  "hardware_target": {
+    "gpu_family": "RTX3090",
+    "compute_capability": "8.6",
+    "memory_mib": 24576,
+    "observed": false
+  },
+  "partition": {
+    "partition_id": "g4-equal7",
+    "layer_count": 28,
+    "groups": [
+      {"group_id": "g00", "start_layer": 0, "end_layer": 6},
+      {"group_id": "g01", "start_layer": 7, "end_layer": 13},
+      {"group_id": "g02", "start_layer": 14, "end_layer": 20},
+      {"group_id": "g03", "start_layer": 21, "end_layer": 27}
+    ]
+  },
+  "module_prefix": "model.layers",
+  "linear_suffixes": [
+    "self_attn.q_proj",
+    "self_attn.k_proj",
+    "self_attn.v_proj",
+    "self_attn.o_proj",
+    "mlp.gate_proj",
+    "mlp.up_proj",
+    "mlp.down_proj"
+  ],
+  "schedules": ["BBBB", "8888", "4444", "B888", "8B88", "88B8", "888B", "8444", "4844", "4484", "4448", "B844", "448B", "8448"],
+  "seed": 0
+}

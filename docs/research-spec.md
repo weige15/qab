@@ -2,10 +2,12 @@
 
 ## Status
 
-The adaptation unit, routing decision point, task/evaluator registry, and
-per-request quality contract are resolved through the current preregistration
-decisions. The model, quantization backend, block-group boundaries, schedule
-codebook, and exact router inputs remain open under their separate decisions.
+The adaptation unit, routing decision point, task/evaluator registry,
+per-request quality contract, and first-paper model/data/backend/hardware
+freeze are resolved through the current preregistration decisions. Block-group
+boundaries, schedule codebook, and exact router inputs remain open under their
+separate decisions. The platform capability preflight is an execution gate;
+this specification does not claim that an unrun gate has passed.
 
 ## Research objective
 
@@ -359,10 +361,132 @@ composites are generated. A cross-split parent union is invalid.
   during decoding.
 
 The number and boundaries of block groups, hardware-executable schedule
-codebook, model, and quantization backend remain open decisions. The Issue #7
-task-suite dataset sources are resolved; archive checksums and final manifests
-are preflight artifacts. Exact router inputs beyond the routing-time boundary
-are also not fixed by this decision.
+codebook, and exact router inputs remain open decisions. The first-paper model,
+backend, hardware target, and source artifact identities are resolved below.
+Archive checksums not available from immutable source metadata and final
+manifests remain required preflight artifacts. Exact router inputs beyond the
+routing-time boundary are also not fixed by this decision.
+
+## Resolved first-paper model, backend, data, and hardware freeze
+
+The first-paper platform/source bundle is frozen as
+`qab.first_paper_platform_freeze.v1`. This is a research-design decision,
+not an execution result. No final-test output, evaluator result, model run, GPU
+experiment, or serving implementation informed the choice.
+
+### Model and tokenizer
+
+- Model: `Qwen/Qwen2.5-7B-Instruct@a09a35458c702b33eeacc393d103063234e8bc28`.
+- Tokenizer: the same repository and immutable revision, including its pinned
+  tokenizer files and chat template.
+- The selected snapshot is an open, ungated Apache-2.0 decoder-only model with
+  7.61B parameters and 28 transformer layers. The revision and model metadata
+  are immutable identities; per-file downloaded SHA-256 values must still be
+  recorded in the acquisition manifest before model-output runs.
+
+### Quantization backend and configuration
+
+The selected backend path is:
+
+```text
+llm-compressor 0.9.0 @ 129c793fdabfd9bc486f85c444bdec6b713978fe
+  -> compressed-tensors 0.12.2 @ 2dd1b627950b4a068f2c1af19bc6f31b7fbb3316
+  -> vLLM 0.11.2 @ 275de34170654274616082721348b7edd9741d32
+```
+
+The frozen relevant configuration is:
+
+- integer GPTQ weight-only `W8A16` and `W4A16`;
+- BF16 activations (`A16`), with activation and KV-cache quantization disabled;
+- linear-layer targets, groupwise quantization with `group_size=128`,
+  `symmetric=true`, `dynamic=false`, and `actorder="weight"`;
+- `dampening_frac=0.01`, `ignore=["lm_head"]`, and the backend's packed
+  integer representation;
+- 512 varied calibration samples at sequence length 2048, drawn only from
+  permitted non-final source instances and using the frozen chat template; and
+- mixed schedules represented by separate W8A16/W4A16/BF16 configuration groups
+  over contiguous transformer-block ranges. The exact group boundaries and
+  schedule codebook remain Issue #5 decisions.
+
+The vLLM CUDA requirements require Torch 2.9.0 and Transformers
+`>=4.56.0,<5`. The previously observed Torch 2.4.0/Transformers 5.12.1
+environment is not accepted as the runtime for this freeze. The coherent
+environment lock, compiler/kernel identity, and package hashes must be
+recorded before execution.
+
+### Capability and hardware evidence status
+
+Primary documentation supports BF16 on Ampere, integer W8A16/W4A16 schemes,
+and mixed configuration groups. The Qwen preflight progress evidence also
+verified the candidate revision, same-revision tokenizer metadata, visible
+RTX 3090 inventory, and a successful bitsandbytes CUDA diagnostic. It did not
+produce a durable full-model BF16/W8A16/W4A16/contiguous-mixed execution
+artifact. Therefore the following remain mandatory preflight gates:
+
+- BF16 full-model load and short generation without CPU fallback;
+- uniform integer W8A16 and W4A16 execution;
+- one nontrivial contiguous BF16/INT8/INT4 schedule;
+- observed-versus-requested block precision map and kernel path;
+- export/reload preservation of the precision map; and
+- peak memory, disk headroom, and exact runtime records.
+
+No unrun gate is reported as passed, and no bitsandbytes path is substituted for
+the strict integer W8A16/W4A16 backend.
+
+The target is one explicitly available `NVIDIA GeForce RTX 3090` with SM86
+and 24,576 MiB. The observed inventory was CUDA 12.4 with driver
+`580.159.03`, but every run must record the selected GPU index, availability
+output, exact driver/CUDA/runtime tuple, peak memory, batch/input/output
+conditions, and working-tree identity. Multi-GPU and heterogeneous placement
+are excluded.
+
+### Frozen source artifacts and checksums
+
+The accepted source/evaluator identities are:
+
+| Family | Operational source identity | Evaluator identity | Artifact/checksum status |
+| --- | --- | --- | --- |
+| MATH | `qwedsacf/competition_math@d9afe06952835e34b5a148b90043bc04aa09e519`; evaluator source `hendrycks/math@985bdc1696e88e8643f081a0ff4719da39f2ae2a` | `math.equivalence.v1` at the Hendrycks commit | `data/train-00000-of-00001-48a8135a22c541f2.parquet`, 2,991,536 bytes, SHA-256 `c0cb0bb1c60d04e9f38e65059a1fd93685efb1b4602912a761257cab09d476e2`; `data/test-00000-of-00001-8381d31b2d187522.parquet`, 1,855,255 bytes, SHA-256 `79f372afea6bedd226750eab23ba54dddede047670446d85178e3e5d0627c191` |
+| HumanEval+ | `evalplus/humanevalplus_release@200defce9e3429d28ca215b6dd061c0f7f31c18b`, tag target `68cd26d53a0dec69f85eafe1f82a2a74155a2bd6`, asset `HumanEvalPlus.jsonl.gz` | `evalplus/evalplus@e5d0ed0bab96280b60b637ec7f15b5e4841b0cb2` | Asset identity is frozen; the release API publishes no digest. SHA-256 is required at approved acquisition. |
+| MuSiQue-Full | `StonyBrookNLP/musique@24cc5b297acc2abfc5fb3d0becb6ef7b73d03717`, official `musique_v1.0.zip` archive, Google Drive file ID `1tGdADlNjWFaHLeZZGShh2IRcpO6Lv24h` | `musique.full.v1` at the same commit | Archive identity is frozen; the pinned source publishes no SHA-256. Archive SHA-256 is required at approved acquisition. |
+
+The MATH operational mapping is historical HF `train` to original MATH
+train and historical HF `test` to original MATH test. Counts, schema, split
+names, and exact content correspondence provide high-confidence support;
+byte-for-byte equivalence to the unavailable Berkeley `MATH.tar` remains
+unproved. The current combined HF `main` artifact is not the source-split
+identity.
+
+The MATH source-instance procedure is
+`source_instance_id = "math.v1:" + SHA256(canonical_json(problem, level, type, solution))`,
+retaining dataset revision, split, file, and row index. Verified manifest
+digests are train
+`26748d701decbc8eadfe86cda070841fe9a9c4a55d418573e3c26f28ba0a7095`, test
+`c04caf7b870997bab14262eb63348df4f84d26e9e866a76a15bb6dde92bacf7a`, and
+combined train-then-test
+`5d922af609751004ec32e02bcd4c3fb8238e1722a6dfe124a5a335b6305db446`.
+
+### Validation, leakage, and limits
+
+- Validation is carved only from training-source instances, deterministically
+  manifested before variants, paraphrases, or composites. MATH test is never
+  used for validation or platform selection. HumanEval+ source tasks receive
+  project train/validation/final roles before variants; MuSiQue non-final work
+  uses source-disjoint train/dev records, while held-out 4-hop and
+  numeric-to-code composites remain final populations.
+- Issue #7's transitive leakage closure is inherited across source items,
+  variants, paraphrases, shared evidence/documents, code prompts/tests,
+  content-bearing templates, and derived composites. Every leakage group has
+  one split; exact/near duplicates and code AST/test-hash duplicates cannot
+  cross splits. MuSiQue's released single-hop exclusion file is mandatory.
+- Registry, evaluator, prompt, split, leakage, and source manifests are frozen
+  before validation/model outputs. The final-test manifest and all
+  judgment-affecting artifacts are hashed before calibration, schedule-codebook,
+  predictor, or router tuning.
+- The study excludes activation/KV quantization, pruning, MoE routing, fully
+  arbitrary per-layer search, multi-GPU placement, continuous serving, and
+  final-test tuning. Claims generalize only to this Qwen model, frozen source
+  populations, finite schedule codebook, and one-SM86 GPU target.
 
 ## Resolved quality judgment unit
 

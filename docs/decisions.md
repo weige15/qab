@@ -1,5 +1,46 @@
 # Scientific Decisions
 
+## 2026-07-28 — Freeze the first-paper model, data, backend, and hardware
+
+Accepted freeze identifier: `qab.first_paper_platform_freeze.v1`.
+
+The first paper uses `Qwen/Qwen2.5-7B-Instruct` and its same-revision
+tokenizer at `a09a35458c702b33eeacc393d103063234e8bc28`, with the LLM
+Compressor `0.9.0` → compressed-tensors `0.12.2` → vLLM `0.11.2` path
+at the pinned commits recorded in `docs/research-spec.md`. The frozen
+configuration is BF16-activation, integer GPTQ W8A16/W4A16 weight-only
+quantization, group size 128, symmetric static scales, weight activation
+ordering, `lm_head` excluded, and no activation or KV-cache quantization.
+Exact block-group boundaries and the schedule codebook remain issue #5
+decisions.
+
+The hardware target is one explicitly available RTX 3090, SM86, 24,576 MiB,
+with exact GPU index and runtime conditions recorded per run. The accepted
+sources are the historical split-preserving MATH artifact
+`qwedsacf/competition_math@d9afe06952835e34b5a148b90043bc04aa09e519`,
+HumanEval+ release `200defce9e3429d28ca215b6dd061c0f7f31c18b`, and official
+MuSiQue-Full v1.0 archive at evaluator/source commit
+`24cc5b297acc2abfc5fb3d0becb6ef7b73d03717`. MATH file SHA-256 values and
+manifest digests are recorded in the authoritative specification; HumanEval+
+and MuSiQue archive SHA-256 values, model snapshot file hashes, and the
+coherent environment lock remain required acquisition/preflight artifacts
+because their immutable sources publish no digest.
+
+The historical MATH train/test mapping is high-confidence but not proven
+byte-equivalent to the unavailable Berkeley archive. Validation is carved only
+from training-source instances before derivatives. Issue #7 leakage grouping
+and manifest freeze rules and issue #4's quality contract are inherited
+unchanged. Primary documentation supports the selected formats and mixed
+configuration groups, but no unrun full-model BF16/W8A16/W4A16 or contiguous
+mixed-schedule result is claimed. The empirical capability preflight must pass
+before model-output runs.
+
+The authoritative specification is `docs/research-spec.md`; the platform
+research packet and earlier issue plans remain evidence/provisional artifacts
+and are not promoted by this decision. No model output, final-test outcome,
+evaluator run, experiment, dataset download, GPU job, serving implementation,
+commit, or push was performed for this decision.
+
 ## 2026-07-27 — Define the per-request quality contract
 
 Accepted contract identifier: `qab.per_request_quality_contract.v1`.
