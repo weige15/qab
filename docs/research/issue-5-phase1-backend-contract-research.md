@@ -1,8 +1,9 @@
 # Issue #5 Phase 1: pinned backend contract research
 
-**Status:** source-level evidence packet for Phase 1 implementation. No package
-was installed, no model or dataset was downloaded, no model was loaded or
-quantized, and no GPU workload was run.
+**Status:** source-level evidence packet for Phase 1 implementation. The
+source-research pass itself was read-only; later execution evidence is kept in
+the immutable Phase 1 run directories and does not promote these source
+findings into a capability claim.
 
 **Date:** 2026-07-28
 

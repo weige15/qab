@@ -1,5 +1,38 @@
 # Scientific Decisions
 
+## 2026-07-28 - Resolve the pinned quantization-runtime dependency conflict
+
+Accepted decision identifier: `qab.issue5_runtime_override.v2`.
+
+The pinned metadata conflict is operationally resolved for the approved remote
+experiment by using LLM Compressor `0.9.0` at
+`129c793fdabfd9bc486f85c444bdec6b713978fe`, compressed-tensors `0.13.0`
+at `797d3019ef6867362796f412980547c74551f369`, and vLLM `0.11.2` at
+`275de34170654274616082721348b7edd9741d32`. The serving runtime is
+Torch `2.9.0` and Transformers `4.57.3` on Python `3.12.3`.
+
+LLM Compressor `0.9.0` and compressed-tensors `0.13.0` are metadata
+coherent. vLLM `0.11.2` declares compressed-tensors `0.12.2`, while LLM Compressor
+`0.9.0` requires compressed-tensors `0.13.0`. The experiment therefore
+solves the vLLM side with its declared `0.12.2` dependency first and then
+installs compressed-tensors `0.13.0` without dependency resolution. The exact
+exception is recorded in the run environment and is not treated as proof of
+backend capability. The no-model import/API preflight passed for the pinned
+LLM Compressor GPTQ/oneshot APIs and vLLM compressed-tensors integration.
+
+The runtime override is accepted only for the remote device-7 capability
+preflight. The run must prove real Qwen loading, GPTQ W8A16/W4A16 calibration,
+packed export, fresh-process reload, vLLM generation, requested-versus-realized
+module maps, and compressed-tensors kernel dispatch. A failed gate blocks all
+quality or benchmark claims. No package was installed locally and the local
+RTX 4050 remains out of scope.
+
+This dated execution decision supersedes the earlier compressed-tensors
+`0.12.2` runtime line for Phase 1 only; it does not alter the preregistered
+scientific scope. The resulting isolated environment reports one intentional
+`uv pip check` incompatibility: vLLM declares `0.12.2`, but `0.13.0` is
+installed.
+
 ## 2026-07-28 — Freeze the first-paper model, data, backend, and hardware
 
 Accepted freeze identifier: `qab.first_paper_platform_freeze.v1`.
